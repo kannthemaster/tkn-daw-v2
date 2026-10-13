@@ -179,8 +179,9 @@ class IntentTests(unittest.TestCase):
 
 class ReliabilityTests(unittest.TestCase):
     def proposal(self, text, actions, before=None):
-        response = {"done": True, "message": {"content": ai.canonical(intent(actions))}}
-        with patch.object(ai, "local_api", side_effect=[{"models": [{"name": "local", "size": 1}]}, {}, response]), \
+        batches = [[action] for action in actions] if "เปลี่ยน" in text and "แล้ว" in text else [actions]
+        responses = [{"done": True, "message": {"content": ai.canonical(intent(batch))}} for batch in batches]
+        with patch.object(ai, "local_api", side_effect=[{"models": [{"name": "local", "size": 1}]}, {}, *responses]), \
                 patch.object(ai.jarvis, "request") as dispatch:
             result = ai.propose(text, before or snapshot(), "local")
         dispatch.assert_not_called()
@@ -247,12 +248,27 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(len(ai.preview(accepted, snapshot(), 7801)["commands"]), 2)
         self.assertEqual(self.proposal(text, list(reversed(actions)))["actions"], [])
         self.assertEqual(self.proposal(text, [actions[1], actions[1]])["actions"], [])
+        self.assertEqual(self.proposal(text, [actions[0], {**actions[1], "track": "Voice"}])["actions"], [])
 
     def test_open_and_close_voice_are_distinct(self):
         for text, muted in (("เปิดเสียง Voice", False), ("ปิดเสียง Voice", True)):
             actions = [{"op": "mute", "track": "Voice", "value": muted}]
             with self.subTest(text=text):
                 self.assertEqual(self.proposal(text, actions)["actions"], actions)
+
+    def test_failed_second_rename_step_returns_no_partial_plan(self):
+        first = {"op": "rename", "track": "Voice", "name": "Solo"}
+        response = {"done": True, "message": {"content": ai.canonical(intent([first]))}}
+        denied = {"done": True, "message": {"content": ai.canonical({"summary": "", "clarification": "กรุณายืนยันแทร็ก", "actions": []})}}
+        with patch.object(ai, "local_api", side_effect=[{"models": [{"name": "local", "size": 1}]}, {}, response, denied]) as api, \
+                patch.object(ai.jarvis, "request") as dispatch:
+            result = ai.propose("เปลี่ยนชื่อ Voice เป็น Solo แล้วปิดเสียง Solo", snapshot(), "local")
+        self.assertEqual(result["actions"], [])
+        self.assertTrue(result["clarification"])
+        self.assertEqual(api.call_count, 4)
+        for call in api.call_args_list[2:]:
+            self.assertEqual(call.args[1]["format"]["properties"]["actions"]["maxItems"], 1)
+        dispatch.assert_not_called()
 
     def test_summary_is_rebuilt_from_actual_approved_actions(self):
         actions = [{"op": "volume_delta", "track": "Voice", "db": -1}]

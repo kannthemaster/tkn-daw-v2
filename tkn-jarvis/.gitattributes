@@ -1,0 +1,2 @@
+# Keep the frozen evaluation dataset's byte hash stable on Windows checkouts.
+thai_heldout_v1.json text eol=lf

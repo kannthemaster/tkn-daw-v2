@@ -184,20 +184,34 @@ def propose(text, snapshot, model="gemma3:4b"):
     metadata = local_api("show", {"model": model})
     if metadata.get("remote_model") or metadata.get("remote_host"):
         raise ValueError("Remote-backed models are not allowed")
-    schema = policy.generation_schema(contract)
-    response = local_api("chat", {"model": model, "stream": False, "think": False, "format": schema,
-        "options": {"temperature": 0, "num_predict": 1800, "num_ctx": 8192},
-        "messages": [{"role": "system", "content": SYSTEM +
-                         "\nIndependent request contract (trusted): " + canonical(contract) +
-                         "\nFollow its actions EXACTLY IN ORDER, without adding parameters or substituting targets/slots. "
-                         "Copy fixed values; select values only inside provided ranges. If not ready, clarify without edits. "
-                         "Never reuse an unrelated effect chain.\nExact output schema:\n" + canonical(schema)},
-                     {"role": "user", "content": canonical({"instruction": text, "session": context(snapshot)})}]})
-    if response.get("done") is not True or not isinstance(response.get("message"), dict) or type(response["message"].get("content")) is not str:
-        raise ValueError("Incomplete Ollama response")
-    intent = validate(decode(response["message"]["content"]))
-    if intent["clarification"].strip():
-        return intent
+    # Rename dependencies use one constrained inference per action. This prevents
+    # anyOf array grammars from repeating a later action in place of the rename.
+    # No partial proposal escapes if any step fails; nothing is dispatched here.
+    steps = [{**contract, "actions": [action]} for action in contract["actions"]] if (
+        len(contract["actions"]) > 1 and any(action["op"] == "rename" for action in contract["actions"])) else [contract]
+    accepted = []
+    for step in steps:
+        schema = policy.generation_schema(step)
+        response = local_api("chat", {"model": model, "stream": False, "think": False, "format": schema,
+            "options": {"temperature": 0, "num_predict": 1800, "num_ctx": 8192},
+            "messages": [{"role": "system", "content": SYSTEM +
+                             "\nIndependent request contract for THIS planning step (trusted): " + canonical(step) +
+                             "\nReturn ONLY this step's actions EXACTLY IN ORDER. Previously approved planning steps "
+                             "have not been applied to the DAW; names after a rename are virtual future targets. "
+                             "Do not repeat previous or future steps, add parameters or substitute targets/slots. "
+                             "Copy fixed values; select values only inside provided ranges. "
+                             "Never reuse an unrelated effect chain.\nExact output schema:\n" + canonical(schema)},
+                         {"role": "user", "content": canonical({"instruction": text, "session": context(snapshot),
+                             "approved_planning_actions": accepted})}]})
+        if response.get("done") is not True or not isinstance(response.get("message"), dict) or type(response["message"].get("content")) is not str:
+            raise ValueError("Incomplete Ollama response")
+        intent = validate(decode(response["message"]["content"]))
+        if intent["clarification"].strip():
+            return intent
+        if not policy.approved(step, intent["actions"]):
+            return {"summary": "", "clarification": "ข้อเสนอ AI ไม่ตรงขั้นตอนของคำขอ กรุณาตรวจชื่อแทร็กและค่าที่ต้องการ", "actions": []}
+        accepted.extend(intent["actions"])
+    intent = {"summary": "", "clarification": "", "actions": accepted}
     if not policy.approved(contract, intent["actions"]):
         return {"summary": "", "clarification": "ข้อเสนอ AI ไม่ตรงขอบเขตคำขอ กรุณาระบุแทร็ก ช่อง และค่าที่ต้องการให้ชัดเจน", "actions": []}
     try:

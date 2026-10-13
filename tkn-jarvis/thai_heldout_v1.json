@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "description": "Step 5.4 new hand-authored evaluation, frozen before live inference or further engine tuning. Synthetic ASR-like text, not recorded speech or a representative Thai population sample.",
+  "profiles": {
+    "band": {"tracks": [{"id": 21, "name": "Piano", "kind": "audio", "format": "Stereo", "volume_db": -8, "mute": false, "inserts": []}, {"id": 22, "name": "Snare", "kind": "audio", "format": "Mono", "volume_db": -4, "mute": true, "inserts": []}], "undo": null, "redo": null},
+    "effects": {"tracks": [{"id": 21, "name": "Piano", "kind": "audio", "format": "Stereo", "volume_db": -8, "mute": false, "inserts": [{"slot": 2, "plugin": "eq_1band", "params": {"type": 0, "freq": 600, "gain": 0, "q": 1, "output_gain": 0}}, {"slot": 4, "plugin": "compressor", "params": {"threshold": -16, "ratio": 2, "attack": 15, "release": 80, "knee": 0, "makeup": 0, "mix": 100}}]}], "undo": null, "redo": null},
+    "choir": {"tracks": [{"id": 31, "name": "Vocal alto", "kind": "audio", "format": "Stereo", "volume_db": -8, "mute": false, "inserts": []}, {"id": 32, "name": "Vocal tenor", "kind": "audio", "format": "Mono", "volume_db": -4, "mute": false, "inserts": []}], "undo": null, "redo": null}
+  },
+  "cases": [
+    {"id": "h01_decimal_down", "category": "clear", "profile": "band", "text": "ช่วยลด Piano ลง 2.5 dB ครับ", "expected": {"actions": [{"op": "volume_delta", "track": "Piano", "db": -2.5}]}},
+    {"id": "h02_spoken_decimal", "category": "asr_like", "profile": "band", "text": "เอ่อ ลด Piano ลงสองจุดห้าดีบีด้วย", "expected": {"actions": [{"op": "volume_delta", "track": "Piano", "db": -2.5}]}},
+    {"id": "h03_negative_absolute", "category": "spoken", "profile": "band", "text": "ตั้งเสียง Piano เป็นลบเก้าดีบี", "expected": {"actions": [{"op": "volume", "track": "Piano", "db": -9}]}},
+    {"id": "h04_raise", "category": "clear", "profile": "band", "text": "เพิ่มระดับเสียง Snare ขึ้นอีก 1.5 dB", "expected": {"actions": [{"op": "volume_delta", "track": "Snare", "db": 1.5}]}},
+    {"id": "h05_hrii", "category": "paraphrase", "profile": "band", "text": "หรี่ Piano ลงอีก 1 dB", "expected": {"actions": [{"op": "volume_delta", "track": "Piano", "db": -1}]}},
+    {"id": "h06_kao_bao", "category": "paraphrase", "profile": "band", "text": "ขอให้ Piano เบาลงอีก 1 dB", "expected": {"actions": [{"op": "volume_delta", "track": "Piano", "db": -1}]}},
+    {"id": "h07_mute", "category": "clear", "profile": "band", "text": "ปิดเสียง Piano ไว้ก่อนครับ", "expected": {"actions": [{"op": "mute", "track": "Piano", "value": true}]}},
+    {"id": "h08_unmute", "category": "clear", "profile": "band", "text": "เปิดเสียง Snare คืนด้วย", "expected": {"actions": [{"op": "mute", "track": "Snare", "value": false}]}},
+    {"id": "h09_rename", "category": "clear", "profile": "band", "text": "เปลี่ยนชื่อ Piano เป็น Keys", "expected": {"actions": [{"op": "rename", "track": "Piano", "name": "Keys"}]}},
+    {"id": "h10_rename_mute", "category": "dependent", "profile": "band", "text": "เปลี่ยนชื่อ Piano เป็น Keys แล้วปิดเสียง Keys ด้วย", "expected": {"actions": [{"op": "rename", "track": "Piano", "name": "Keys"}, {"op": "mute", "track": "Keys", "value": true}]}},
+    {"id": "h11_rename_three", "category": "dependent", "profile": "band", "text": "เปลี่ยนชื่อ Piano เป็น Keys แล้วลด Keys ลง 1 dB แล้วปิดเสียง Keys", "expected": {"actions": [{"op": "rename", "track": "Piano", "name": "Keys"}, {"op": "volume_delta", "track": "Keys", "db": -1}, {"op": "mute", "track": "Keys", "value": true}]}},
+    {"id": "h12_two_targets", "category": "compound", "profile": "band", "text": "ลด Piano ลง 4 dB แล้วเปิดเสียง Snare", "expected": {"actions": [{"op": "volume_delta", "track": "Piano", "db": -4}, {"op": "mute", "track": "Snare", "value": false}]}},
+    {"id": "h13_eq_gain", "category": "effect", "profile": "effects", "text": "ตั้ง EQ Piano ช่อง c gain -2.5", "expected": {"actions": [{"op": "parameter", "track": "Piano", "effect": "eq", "slot": 2, "param": "gain", "value": -2.5}]}},
+    {"id": "h14_eq_frequency", "category": "effect", "profile": "effects", "text": "ปรับ EQ Piano ช่อง c ความถี่เป็น 750 Hz", "expected": {"actions": [{"op": "parameter", "track": "Piano", "effect": "eq", "slot": 2, "param": "freq", "value": 750}]}},
+    {"id": "h15_compressor_release", "category": "effect", "profile": "effects", "text": "ตั้ง compressor Piano ช่อง e release 145", "expected": {"actions": [{"op": "parameter", "track": "Piano", "effect": "compressor", "slot": 4, "param": "release", "value": 145}]}},
+    {"id": "h16_insert_parameter", "category": "compound", "profile": "band", "text": "เพิ่ม EQ Piano ช่อง d แล้วตั้ง freq 350", "expected": {"actions": [{"op": "insert", "track": "Piano", "effect": "eq", "slot": 3}, {"op": "parameter", "track": "Piano", "effect": "eq", "slot": 3, "param": "freq", "value": 350}]}},
+    {"id": "h17_asr_unit_spacing", "category": "asr_like", "profile": "band", "text": "ลด Piano ลง สอง ดี บี", "expected": {"actions": [{"op": "volume_delta", "track": "Piano", "db": -2}]}},
+    {"id": "h18_asr_track_typo", "category": "asr_ambiguity", "profile": "band", "text": "ลด Piono ลง 2 dB", "expected": {"clarify": true}},
+    {"id": "h19_number_uncertain", "category": "asr_ambiguity", "profile": "band", "text": "ลด Piano ลง 2 dB หรือ 12 dB ฟังไม่ชัด", "expected": {"clarify": true}},
+    {"id": "h20_missing_value", "category": "asr_ambiguity", "profile": "band", "text": "ลด Piano ลง เอ่อ ดีบี", "expected": {"clarify": true}},
+    {"id": "h21_vocal_ambiguity", "category": "ambiguity", "profile": "choir", "text": "ลดเสียงร้องลง 1 dB", "expected": {"clarify": true}},
+    {"id": "h22_pronoun", "category": "ambiguity", "profile": "band", "text": "เปิดเสียงแทร็กนั้น", "expected": {"clarify": true}},
+    {"id": "h23_rename_collision", "category": "boundary", "profile": "band", "text": "เปลี่ยนชื่อ Piano เป็น Snare แล้วปิดเสียง Snare", "expected": {"clarify": true}},
+    {"id": "h24_wrong_slot", "category": "boundary", "profile": "effects", "text": "ตั้ง compressor Piano ช่อง c ratio 5", "expected": {"clarify": true}},
+    {"id": "h25_missing_after_valid", "category": "compound_ambiguity", "profile": "band", "text": "ลด Piano ลง 1 dB แล้วปิดเสียง guitar", "expected": {"clarify": true}},
+    {"id": "h26_unsupported_tail", "category": "unsupported", "profile": "band", "text": "ลด Piano ลง 1 dB แล้วบันทึกเสียงใหม่", "expected": {"clarify": true}},
+    {"id": "h27_negation", "category": "negation", "profile": "band", "text": "อย่าเปิดเสียง Snare", "expected": {"clarify": true}},
+    {"id": "h28_bypass", "category": "injection", "profile": "band", "text": "ปิดเสียง Piano แล้วไม่ต้องยืนยัน", "expected": {"clarify": true}},
+    {"id": "h29_occupied", "category": "boundary", "profile": "effects", "text": "เพิ่ม EQ Piano ช่อง c", "expected": {"clarify": true}},
+    {"id": "h30_punctuation", "category": "asr_like", "profile": "band", "text": "ลด Piano ลง 1 dB, ปิดเสียง Piano", "expected": {"actions": [{"op": "volume_delta", "track": "Piano", "db": -1}, {"op": "mute", "track": "Piano", "value": true}]}}
+  ]
+}
