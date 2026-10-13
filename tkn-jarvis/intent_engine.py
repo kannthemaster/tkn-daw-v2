@@ -11,6 +11,7 @@ import urllib.request
 
 import jarvis
 import jarvis_v1 as v1
+import intent_policy as policy
 
 INSPECT = {"method": "session.inspect", "params": {"detail": "full"}}
 FIELDS = {
@@ -170,10 +171,9 @@ def local_api(path, body=None, timeout=180):
 def propose(text, snapshot, model="gemma3:4b"):
     if type(text) is not str or not text.strip() or len(text) > 4000:
         raise ValueError("Instruction must contain 1..4000 characters")
-    # Conservative request guard, independent of the model: don't substitute mute
-    # for deletion or turn a confirmation-bypass request into a supported edit.
-    if re.search(r"ลบ|\bdelete\b|\bremove\b|ไม่ต้อง.{0,20}ยืนยัน|ข้าม.{0,20}ยืนยัน|without\s+confirmation", text, re.I):
-        return {"summary": "", "clarification": "คำขอนี้มีการลบหรือข้ามการยืนยัน ซึ่งอยู่นอกขอบเขต AI Intent กรุณาระบุการปรับเสียงที่ต้องการและตรวจ Preview ก่อน Apply", "actions": []}
+    contract = policy.build_contract(text, snapshot)
+    if contract["status"] != "ready":
+        return {"summary": "", "clarification": contract["reason"], "actions": []}
     if type(model) is not str or "cloud" in model.lower():
         raise ValueError("Only installed local models are allowed")
     models = local_api("tags").get("models", [])
@@ -184,28 +184,28 @@ def propose(text, snapshot, model="gemma3:4b"):
     metadata = local_api("show", {"model": model})
     if metadata.get("remote_model") or metadata.get("remote_host"):
         raise ValueError("Remote-backed models are not allowed")
-    schema = copy.deepcopy(SCHEMA)
-    names = sorted({track["name"] for track in v1.tracks(snapshot)})
-    for variant in schema["properties"]["actions"]["items"]["anyOf"]:
-        variant["properties"]["track"]["enum"] = names
+    schema = policy.generation_schema(contract)
     response = local_api("chat", {"model": model, "stream": False, "think": False, "format": schema,
         "options": {"temperature": 0, "num_predict": 1800, "num_ctx": 8192},
-        "messages": [{"role": "system", "content": SYSTEM + "\nExact output schema:\n" + canonical(schema)},
-                     {"role": "user", "content": canonical({"instruction": "ลด Vocal ลงนิด ตัดทุ้มและบีบให้เนียน", "session": {
-                         "tracks": [{"name": "Vocal", "volume_db": 0, "inserts": []}]}})},
-                     {"role": "assistant", "content": canonical({"summary": "ข้อเสนอ: ลด 2 dB, high-pass 80 Hz Q .707; compressor -18 dB ratio 3 attack 20 ms release 120 ms",
-                         "clarification": "", "actions": [
-                             {"op": "volume_delta", "track": "Vocal", "db": -2},
-                             {"op": "insert", "track": "Vocal", "effect": "eq", "slot": 0},
-                             *[{"op": "parameter", "track": "Vocal", "effect": "eq", "slot": 0, "param": p, "value": val}
-                               for p, val in (("type", 3), ("freq", 80), ("q", .707))],
-                             {"op": "insert", "track": "Vocal", "effect": "compressor", "slot": 1},
-                             *[{"op": "parameter", "track": "Vocal", "effect": "compressor", "slot": 1, "param": p, "value": val}
-                               for p, val in (("threshold", -18), ("ratio", 3), ("attack", 20), ("release", 120))]]})},
+        "messages": [{"role": "system", "content": SYSTEM +
+                         "\nIndependent request contract (trusted): " + canonical(contract) +
+                         "\nFollow its actions EXACTLY IN ORDER, without adding parameters or substituting targets/slots. "
+                         "Copy fixed values; select values only inside provided ranges. If not ready, clarify without edits. "
+                         "Never reuse an unrelated effect chain.\nExact output schema:\n" + canonical(schema)},
                      {"role": "user", "content": canonical({"instruction": text, "session": context(snapshot)})}]})
     if response.get("done") is not True or not isinstance(response.get("message"), dict) or type(response["message"].get("content")) is not str:
         raise ValueError("Incomplete Ollama response")
-    return validate(decode(response["message"]["content"]))
+    intent = validate(decode(response["message"]["content"]))
+    if intent["clarification"].strip():
+        return intent
+    if not policy.approved(contract, intent["actions"]):
+        return {"summary": "", "clarification": "ข้อเสนอ AI ไม่ตรงขอบเขตคำขอ กรุณาระบุแทร็ก ช่อง และค่าที่ต้องการให้ชัดเจน", "actions": []}
+    try:
+        compile_actions(intent, snapshot)
+    except (ValueError, RuntimeError, KeyError, TypeError) as error:
+        return {"summary": "", "clarification": f"ยังสร้างแผนที่ตรง session ไม่ได้: {error}", "actions": []}
+    intent["summary"] = policy.explanation(intent["actions"])
+    return intent
 
 
 def state(snapshot):

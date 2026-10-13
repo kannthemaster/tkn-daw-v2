@@ -123,21 +123,21 @@ class IntentTests(unittest.TestCase):
         engine.assert_not_called()
         schema = api.call_args_list[2].args[1]["format"]
         self.assertEqual(schema["additionalProperties"], False)
-        self.assertEqual(schema["properties"]["actions"]["items"]["anyOf"][0]["properties"]["track"]["enum"], ["Voice"])
+        self.assertEqual(schema["properties"]["actions"]["items"]["anyOf"][0]["properties"]["track"]["const"], "Voice")
 
     def test_remote_backed_alias_rejected_before_chat(self):
         with patch.object(ai, "local_api", side_effect=[{"models": [{"name": "alias", "size": 1}]},
                                                        {"remote_host": "cloud.example"}]) as api:
             with self.assertRaisesRegex(ValueError, "Remote-backed"):
-                ai.propose("test", snapshot(), "alias")
+                ai.propose("ลด Voice ลง 2 dB", snapshot(), "alias")
         self.assertEqual(api.call_count, 2)
 
     def test_cloud_and_missing_models_rejected(self):
         with self.assertRaises(ValueError):
-            ai.propose("test", snapshot(), "model:cloud")
+            ai.propose("ลด Voice ลง 2 dB", snapshot(), "model:cloud")
         with patch.object(ai, "local_api", return_value={"models": []}) as api:
             with self.assertRaises(ValueError):
-                ai.propose("test", snapshot(), "missing")
+                ai.propose("ลด Voice ลง 2 dB", snapshot(), "missing")
         self.assertEqual(api.call_count, 1)
 
     def test_context_excludes_paths_and_audio(self):
@@ -149,13 +149,13 @@ class IntentTests(unittest.TestCase):
     def test_malformed_provider_metadata_rejected(self):
         with patch.object(ai, "local_api", return_value={"models": [None]}):
             with self.assertRaises(ValueError):
-                ai.propose("test", snapshot(), "local")
+                ai.propose("ลด Voice ลง 2 dB", snapshot(), "local")
 
     def test_non_string_provider_content_rejected(self):
         with patch.object(ai, "local_api", side_effect=[{"models": [{"name": "local", "size": 1}]}, {},
                                                        {"done": True, "message": {"content": None}}]):
             with self.assertRaises(ValueError):
-                ai.propose("test", snapshot(), "local")
+                ai.propose("ลด Voice ลง 2 dB", snapshot(), "local")
 
     def test_later_occupied_slot_rejected_at_preview(self):
         actions = [{"op": "insert", "track": "Voice", "slot": 0, "effect": "eq"},
@@ -175,6 +175,90 @@ class IntentTests(unittest.TestCase):
                 self.assertEqual(proposal["actions"], [])
                 self.assertTrue(proposal["clarification"])
                 api.assert_not_called()
+
+
+class ReliabilityTests(unittest.TestCase):
+    def proposal(self, text, actions, before=None):
+        response = {"done": True, "message": {"content": ai.canonical(intent(actions))}}
+        with patch.object(ai, "local_api", side_effect=[{"models": [{"name": "local", "size": 1}]}, {}, response]), \
+                patch.object(ai.jarvis, "request") as dispatch:
+            result = ai.propose(text, before or snapshot(), "local")
+        dispatch.assert_not_called()
+        return result
+
+    def test_negative_spoken_level_is_not_deletion(self):
+        actions = [{"op": "volume", "track": "Voice", "db": -7.5}]
+        result = self.proposal("ตั้งเสียง Voice เป็น ลบเจ็ดจุดห้า ดีบี", actions)
+        self.assertEqual(result["actions"], actions)
+
+    def test_wrong_target_and_extra_operation_are_rejected(self):
+        before = snapshot()
+        other = copy.deepcopy(before["tracks"][0])
+        other.update(id=8, name="Guitar")
+        before["tracks"].append(other)
+        for actions in ([{"op": "volume_delta", "track": "Voice", "db": -2}],
+                        [{"op": "volume_delta", "track": "Guitar", "db": -1}],
+                        [{"op": "volume_delta", "track": "Voice", "db": -1},
+                         {"op": "mute", "track": "Voice", "value": True}]):
+            with self.subTest(actions=actions):
+                result = self.proposal("ลด Voice ลง 1 dB", actions, before)
+                self.assertEqual(result["actions"], [])
+                self.assertTrue(result["clarification"])
+
+    def test_parameter_scope_rejects_wrong_slot_and_extra_parameter(self):
+        before = snapshot()
+        before["tracks"][0]["inserts"] = [
+            {"slot": slot, "plugin": "eq_1band", "params": {"freq": 800}} for slot in (0, 1)]
+        correct = {"op": "parameter", "track": "Voice", "effect": "eq", "slot": 1, "param": "freq", "value": 950}
+        self.assertEqual(self.proposal("ตั้ง EQ Voice ช่อง b freq 950", [correct], before)["actions"], [correct])
+        for actions in ([{**correct, "slot": 0}],
+                        [correct, {**correct, "param": "gain", "value": 0}]):
+            with self.subTest(actions=actions):
+                result = self.proposal("ตั้ง EQ Voice ช่อง b freq 950", actions, before)
+                self.assertEqual(result["actions"], [])
+                self.assertTrue(result["clarification"])
+
+    def test_missing_lowercase_target_never_inherits_previous_track(self):
+        with patch.object(ai, "local_api") as api:
+            result = ai.propose("ลด Voice ลง 1 dB แล้วลด guitar ลง 2 dB", snapshot())
+        self.assertEqual(result["actions"], [])
+        self.assertTrue(result["clarification"])
+        api.assert_not_called()
+
+    def test_ambiguous_vocal_and_unknown_clause_are_safe(self):
+        before = snapshot()
+        other = copy.deepcopy(before["tracks"][0])
+        other.update(id=9, name="Vocal harmony")
+        before["tracks"].append(other)
+        for text in ("ลดเสียงร้องลงหน่อย", "ลด Voice ลง 1 dB แล้วจัดเวทีให้กว้างขึ้น",
+                     "อย่าลด Voice ลง 1 dB", "ไม่เพิ่ม EQ Voice ช่อง a"):
+            with self.subTest(text=text), patch.object(ai, "local_api") as api:
+                result = ai.propose(text, before)
+                self.assertEqual(result["actions"], [])
+                self.assertTrue(result["clarification"])
+                api.assert_not_called()
+
+    def test_rename_followed_by_new_name_compiles_and_reversed_order_rejected(self):
+        actions = [{"op": "rename", "track": "Voice", "name": "Solo"},
+                   {"op": "volume_delta", "track": "Solo", "db": -1}]
+        text = "เปลี่ยนชื่อ Voice เป็น Solo แล้วลด Solo ลง 1 dB"
+        accepted = self.proposal(text, actions)
+        self.assertEqual(accepted["actions"], actions)
+        self.assertEqual(len(ai.preview(accepted, snapshot(), 7801)["commands"]), 2)
+        self.assertEqual(self.proposal(text, list(reversed(actions)))["actions"], [])
+        self.assertEqual(self.proposal(text, [actions[1], actions[1]])["actions"], [])
+
+    def test_open_and_close_voice_are_distinct(self):
+        for text, muted in (("เปิดเสียง Voice", False), ("ปิดเสียง Voice", True)):
+            actions = [{"op": "mute", "track": "Voice", "value": muted}]
+            with self.subTest(text=text):
+                self.assertEqual(self.proposal(text, actions)["actions"], actions)
+
+    def test_summary_is_rebuilt_from_actual_approved_actions(self):
+        actions = [{"op": "volume_delta", "track": "Voice", "db": -1}]
+        result = self.proposal("ลด Voice ลง 1 dB", actions)
+        self.assertIn("db=-1", result["summary"])
+        self.assertNotIn("2 dB", result["summary"])
 
 
 if __name__ == "__main__":
