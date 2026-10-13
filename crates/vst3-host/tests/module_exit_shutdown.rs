@@ -38,7 +38,14 @@ fn main() {
     assert!(up_front.status.success(), "shutdown before exit: {:?}\n{}", up_front.status, String::from_utf8_lossy(&up_front.stderr));
     let too_late = run("exit-handler");
     let err = String::from_utf8_lossy(&too_late.stderr);
-    assert_eq!(too_late.status.code(), Some(3), "the exit handler alone comes too late: {err}");
-    assert!(err.contains("module exit after the process exit tore down state"), "{err}");
+    if cfg!(windows) {
+        // MSVC runs the DLL's atexit callbacks at DLL detach, separately from the EXE's.
+        // This fixture therefore does not reproduce the Unix late-state failure on Windows.
+        assert_eq!(too_late.status.code(), Some(0), "Windows DLL exit callbacks: {err}");
+        assert!(!err.contains("module exit after the process exit tore down state"), "{err}");
+    } else {
+        assert_eq!(too_late.status.code(), Some(3), "the exit handler alone comes too late: {err}");
+        assert!(err.contains("module exit after the process exit tore down state"), "{err}");
+    }
     println!("module_exit_shutdown: ok");
 }

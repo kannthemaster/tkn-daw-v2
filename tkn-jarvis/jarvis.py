@@ -6,6 +6,7 @@ This is a deterministic command prototype, NOT an LLM or speech recognizer.
 """
 import argparse
 import json
+import math
 import re
 import socket
 import sys
@@ -59,11 +60,30 @@ def request(port: int, payload: dict, timeout: float = 5.0) -> dict:
         if b"\n" not in data:
             raise RuntimeError("Incomplete response from SoundCraft")
         result = json.loads(data.split(b"\n", 1)[0].decode("utf-8"))
-        if result.get("id") != 1:
+        if not isinstance(result, dict):
+            raise RuntimeError("SoundCraft response must be a JSON object")
+        if type(result.get("id")) is not int or result["id"] != 1:
             raise RuntimeError("Unexpected response id")
-        if not result.get("ok", False):
+        if type(result.get("ok")) is not bool:
+            raise RuntimeError("SoundCraft response must contain a boolean success flag")
+        if not result["ok"]:
             raise RuntimeError(str(result.get("error", "SoundCraft command failed")))
         return result
+
+
+def verify_volume(snapshot: object, track: str, db: float) -> None:
+    """Check the requested fader after writing; never imply automatic rollback."""
+    tracks = snapshot.get("tracks") if isinstance(snapshot, dict) else None
+    if not isinstance(tracks, list) or any(not isinstance(item, dict) for item in tracks):
+        raise RuntimeError("Volume verification failed: invalid session tracks")
+    matches = [item for item in tracks if item.get("name") == track]
+    if len(matches) != 1:
+        raise RuntimeError("Volume verification failed: target track missing or ambiguous")
+    actual = matches[0].get("volume_db")
+    if type(actual) not in (int, float) or not math.isfinite(actual):
+        raise RuntimeError("Volume verification failed: invalid fader value")
+    if not math.isclose(actual, db, rel_tol=0, abs_tol=0.0001):
+        raise RuntimeError(f"Volume verification failed: expected {db} dB, got {actual} dB")
 
 
 def main() -> int:
@@ -86,6 +106,8 @@ def main() -> int:
                                                "params": {"detail": "summary"}})
                 print(json.dumps({"post_command_inspection": verified.get("result")},
                                  ensure_ascii=False, indent=2))
+                command_params = payload["params"]["params"]
+                verify_volume(verified.get("result"), command_params["track"], command_params["db"])
         return 0
     except (ValueError, OSError, RuntimeError, json.JSONDecodeError) as error:
         print(f"JARVIS error: {error}", file=sys.stderr)
