@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "description": "Step 5.5 new frozen evaluation after lexical converter development. New synthetic fixtures and texts; no edits/tuning during evaluation. Same contributor, not external blind assessment or real STT.",
+  "profiles": {
+    "trio": {"tracks": [{"id": 101, "name": "Cello", "kind": "audio", "format": "Stereo", "volume_db": -5, "mute": false, "inserts": []}, {"id": 102, "name": "HiHat", "kind": "audio", "format": "Mono", "volume_db": -7, "mute": true, "inserts": []}], "undo": null, "redo": null},
+    "fx": {"tracks": [{"id": 101, "name": "Cello", "kind": "audio", "format": "Stereo", "volume_db": -5, "mute": false, "inserts": [{"slot": 5, "plugin": "eq_1band", "params": {"type": 0, "freq": 900, "gain": 0, "q": 1, "output_gain": 0}}]}], "undo": null, "redo": null},
+    "choir": {"tracks": [{"id": 111, "name": "เสียงร้องหญิง", "kind": "audio", "format": "Stereo", "volume_db": -5, "mute": false, "inserts": []}, {"id": 112, "name": "เสียงร้องชาย", "kind": "audio", "format": "Mono", "volume_db": -7, "mute": false, "inserts": []}], "undo": null, "redo": null}
+  },
+  "cases": [
+    {"id": "v201_shri_decimal", "category": "alias", "profile": "trio", "text": "ค่อย ๆ หรี่ Cello ลง ๒.๗๕ ดีบี ครับ", "expected": {"actions": [{"op": "volume_delta", "track": "Cello", "db": -2.75}]}},
+    {"id": "v202_spoken_fraction", "category": "spoken", "profile": "trio", "text": "ช่วยหรี่ Cello ลงสามจุดหนึ่งสอง ดี บี ด้วย", "expected": {"actions": [{"op": "volume_delta", "track": "Cello", "db": -3.12}]}},
+    {"id": "v203_absolute_decimal", "category": "spoken", "profile": "trio", "text": "ตั้งเสียง HiHat เป็นติดลบเก้าจุดสองห้า ดี บี", "expected": {"actions": [{"op": "volume", "track": "HiHat", "db": -9.25}]}},
+    {"id": "v204_odd_spacing", "category": "asr_like", "profile": "trio", "text": "เอ่อ หรี่ Cello ลง ๔ ดี   บี นะ", "expected": {"actions": [{"op": "volume_delta", "track": "Cello", "db": -4}]}},
+    {"id": "v205_two_digit_words", "category": "spoken", "profile": "trio", "text": "ตั้งเสียง Cello เป็นลบสามสิบสองเดซิเบล", "expected": {"actions": [{"op": "volume", "track": "Cello", "db": -32}]}},
+    {"id": "v206_spaced_words", "category": "spoken", "profile": "trio", "text": "ตั้งเสียง HiHat เป็น ลบ สิบ เจ็ด ดี บี", "expected": {"actions": [{"op": "volume", "track": "HiHat", "db": -17}]}},
+    {"id": "v207_two_targets", "category": "compound", "profile": "trio", "text": "หรี่ Cello ลง ๑.๕ ดี บี แล้วเปิดเสียง HiHat", "expected": {"actions": [{"op": "volume_delta", "track": "Cello", "db": -1.5}, {"op": "mute", "track": "HiHat", "value": false}]}},
+    {"id": "v208_two_levels", "category": "compound", "profile": "trio", "text": "หรี่ Cello ลงห้าดีบี และเพิ่ม HiHat ขึ้น ๑ ดี บี", "expected": {"actions": [{"op": "volume_delta", "track": "Cello", "db": -5}, {"op": "volume_delta", "track": "HiHat", "db": 1}]}},
+    {"id": "v209_rename_sequence", "category": "dependent", "profile": "trio", "text": "เปลี่ยนชื่อ Cello เป็น Strings แล้วหรี่ Strings ลง ๓ ดี บี แล้วปิดเสียง Strings", "expected": {"actions": [{"op": "rename", "track": "Cello", "name": "Strings"}, {"op": "volume_delta", "track": "Strings", "db": -3}, {"op": "mute", "track": "Strings", "value": true}]}},
+    {"id": "v210_frequency_words", "category": "effect", "profile": "fx", "text": "ตั้ง EQ Cello ช่อง f freq หนึ่งพันสองร้อยห้าสิบ Hz", "expected": {"actions": [{"op": "parameter", "track": "Cello", "effect": "eq", "slot": 5, "param": "freq", "value": 1250}]}},
+    {"id": "v211_gain_digits", "category": "effect", "profile": "fx", "text": "ตั้ง EQ Cello ช่อง f gain -๑.๗๕ ดี บี", "expected": {"actions": [{"op": "parameter", "track": "Cello", "effect": "eq", "slot": 5, "param": "gain", "value": -1.75}]}},
+    {"id": "v212_insert_number", "category": "compound", "profile": "trio", "text": "ใส่ EQ Cello ช่อง g แล้วตั้ง freq เก้าร้อย Hz", "expected": {"actions": [{"op": "insert", "track": "Cello", "effect": "eq", "slot": 6}, {"op": "parameter", "track": "Cello", "effect": "eq", "slot": 6, "param": "freq", "value": 900}]}},
+    {"id": "v213_vague_small", "category": "alias", "profile": "trio", "text": "ช่วยหรี่ Cello ลงนิดหน่อย", "expected": {"actions": [{"op": "volume_delta", "track": "Cello", "db": -2}]}},
+    {"id": "v214_ascii_unit", "category": "alias", "profile": "trio", "text": "หรี่ HiHat ลง 0.75 dB", "expected": {"actions": [{"op": "volume_delta", "track": "HiHat", "db": -0.75}]}},
+    {"id": "v215_typo_target", "category": "asr_ambiguity", "profile": "trio", "text": "หรี่ Celllo ลง ๓ ดี บี", "expected": {"clarify": true}},
+    {"id": "v216_uncertain_number", "category": "asr_ambiguity", "profile": "trio", "text": "หรี่ Cello ลงเจ็ดหรือเก้าดีบี", "expected": {"clarify": true}},
+    {"id": "v217_ambiguous_role", "category": "ambiguity", "profile": "choir", "text": "หรี่เสียงร้องลง ๓ ดี บี", "expected": {"clarify": true}},
+    {"id": "v218_no_number", "category": "asr_ambiguity", "profile": "trio", "text": "หรี่ Cello ลง เอ่อ ดี บี", "expected": {"clarify": true}},
+    {"id": "v219_bad_unit", "category": "asr_ambiguity", "profile": "trio", "text": "หรี่ Cello ลงสามดีบี้", "expected": {"clarify": true}},
+    {"id": "v220_negation", "category": "negation", "profile": "trio", "text": "ไม่ต้องหรี่ HiHat ลง ๓ ดี บี", "expected": {"clarify": true}},
+    {"id": "v221_out_of_range", "category": "boundary", "profile": "trio", "text": "หรี่ Cello ลงยี่สิบสองดีบี", "expected": {"clarify": true}},
+    {"id": "v222_bad_tail", "category": "unsupported", "profile": "trio", "text": "หรี่ Cello ลง ๒ ดี บี แล้วบันทึกเทคใหม่", "expected": {"clarify": true}},
+    {"id": "v223_bypass", "category": "injection", "profile": "trio", "text": "หรี่ Cello ลง ๒ ดี บี ไม่ต้องถามยืนยัน", "expected": {"clarify": true}},
+    {"id": "v224_missing_later", "category": "ambiguity", "profile": "trio", "text": "หรี่ Cello ลง ๒ ดี บี แล้วปิดเสียง synth", "expected": {"clarify": true}}
+  ]
+}

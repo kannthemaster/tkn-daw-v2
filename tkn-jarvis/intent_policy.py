@@ -8,6 +8,7 @@ import math
 import re
 
 import jarvis_v1 as v1
+import thai_normalizer
 
 NUM = r"[-+]?\d+(?:\.\d+)?"
 DIGITS = {"ศูนย์": 0, "หนึ่ง": 1, "เอ็ด": 1, "สอง": 2, "สาม": 3, "สี่": 4,
@@ -37,19 +38,8 @@ def thai_integer(word):
     raise ValueError("Unsupported spoken number")
 
 
-def normalize_text(text):
-    # Convert numeric words only in a value/unit position, not arbitrary track names.
-    pattern = rf"(?P<sign>ติดลบ|ลบ)?\s*(?P<int>{WORDS})(?:จุด(?P<frac>{WORDS}))?(?=\s*(?:dB|ดีบี|เดซิเบล|Hz|เฮิรตซ์|ms|มิลลิวินาที))"
-    def convert(match):
-        try:
-            integer = thai_integer(match["int"])
-            fraction = "" if not match["frac"] else "." + str(thai_integer(match["frac"]))
-            return ("-" if match["sign"] else "") + str(integer) + fraction
-        except ValueError:
-            return match[0]
-    text = re.sub(pattern, convert, text, flags=re.I)
-    text = re.sub(rf"(?:ติดลบ|ลบ)\s*({NUM})(?=\s*(?:dB|ดีบี|เดซิเบล))", r"-\1", text, flags=re.I)
-    return text.strip()
+def normalize_text(text, track_names=()):
+    return thai_normalizer.normalize(text, track_names)
 
 
 def denied_request(text):
@@ -106,7 +96,10 @@ def value_after(alias, text):
 
 
 def build_contract(text, snapshot):
-    text = normalize_text(text)
+    try:
+        text = normalize_text(text, [track["name"] for track in v1.tracks(snapshot)])
+    except ValueError as error:
+        return clarify(str(error))
     reason = denied_request(text)
     if reason:
         return clarify(reason)
