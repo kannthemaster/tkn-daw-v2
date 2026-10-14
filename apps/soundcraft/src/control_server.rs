@@ -91,6 +91,12 @@ pub fn start_jarvis(ctx: egui::Context, tx: Sender<ControlRequest>, stop: std::s
 fn serve_jarvis(stream: TcpStream, tx: &Sender<ControlRequest>, ctx: &egui::Context, stop: &std::sync::atomic::AtomicBool) {
     use std::io::Read as _;
     use std::sync::atomic::Ordering;
+    // Accepted Windows sockets inherit the listener's nonblocking mode. The worker
+    // must wait for a complete bounded line instead of closing on the first WouldBlock.
+    if let Err(error) = stream.set_nonblocking(false) {
+        log::warn!("JARVIS socket mode could not be set: {error}");
+        return;
+    }
     let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
     let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
     let _ = stream.set_nodelay(true);
@@ -168,6 +174,8 @@ mod jarvis_endpoint_tests {
         for _ in 0..12 {
             let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
             stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+            // A real client may finish connect before scheduling its first send.
+            std::thread::sleep(Duration::from_millis(100));
             writeln!(stream, "{}", json!({"id":1,"method":"session.inspect","params":{"detail":"full"}})).unwrap();
             let mut frame = String::new();
             BufReader::new(stream).read_line(&mut frame).unwrap();
