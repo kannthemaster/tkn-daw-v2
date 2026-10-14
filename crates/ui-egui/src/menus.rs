@@ -200,6 +200,14 @@ pub fn tree() -> Vec<MenuNode> {
     for line in catalog::catalog() {
         insert_path(&mut roots, line);
     }
+    insert_path(&mut roots, "Window > JARVIS");
+    if let Some(window) = roots.iter_mut().find(|node| node.label == "Window")
+        && let Some(index) = window.children.iter().position(|node| node.label == "JARVIS")
+    {
+        let jarvis = window.children.remove(index);
+        let target = window.children.iter().position(|node| node.label == "Edit").map_or(0, |index| index + 1);
+        window.children.insert(target, jarvis);
+    }
     insert_path(&mut roots, "Window > Reset Panel Layout");
     for (path, _) in MENU_WINDOWS {
         insert_path(&mut roots, path);

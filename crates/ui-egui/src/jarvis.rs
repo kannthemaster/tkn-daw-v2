@@ -48,6 +48,7 @@ pub struct State {
     last_session: Option<Arc<Session>>,
     preview_instruction: String,
     applying_commands: Vec<Value>,
+    expected_steps: usize,
 }
 
 impl State {
@@ -143,6 +144,7 @@ impl State {
         };
         self.confirmation_open = false;
         self.applying_commands = plan.get("commands").and_then(Value::as_array).cloned().unwrap_or_default();
+        self.expected_steps = self.applying_commands.len();
         let fields = json!({"context": self.generation.to_string(), "instruction": self.preview_instruction,
             "preview_id": plan.get("preview_id"), "confirmation": plan.get("confirmation"), "confirmed": true});
         if let Err(error) = self.send("apply", fields, Phase::Applying) {
@@ -201,8 +203,12 @@ impl State {
             }
             (Phase::Applying, Some("verified"))
                 if result.get("verified").and_then(Value::as_bool) == Some(true)
+                    && self.applying_commands.is_empty()
                     && result.get("steps").and_then(Value::as_array).is_some_and(|steps| {
-                        !steps.is_empty() && steps.len() <= 16 && steps.iter().all(|step| step.get("verified").and_then(Value::as_bool) == Some(true))
+                        !steps.is_empty()
+                            && steps.len() == self.expected_steps
+                            && steps.len() <= 16
+                            && steps.iter().all(|step| step.get("verified").and_then(Value::as_bool) == Some(true))
                     }) =>
             {
                 let count = result.get("steps").and_then(Value::as_array).map_or(0, Vec::len);
@@ -299,7 +305,7 @@ fn changes(ui: &mut egui::Ui, plan: &Value) {
             let value = |key| action.get(key).map_or_else(|| "?".into(), Value::to_string);
             let detail = match text("op") {
                 "volume" => format!("ตั้ง Volume เป็น {} dB", value("db")),
-                "volume_delta" => format!("ปรับ Volume {} dB → {} dB", value("db"), value("absolute_fader_db")),
+                "volume_delta" => format!("ปรับ Volume {} dB · หลัง Apply {} dB", value("db"), value("absolute_fader_db")),
                 "rename" => format!("เปลี่ยนชื่อเป็น {}", text("name")),
                 "mute" => {
                     if action.get("value").and_then(Value::as_bool) == Some(true) {

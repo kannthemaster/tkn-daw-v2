@@ -200,6 +200,19 @@ impl Workspace {
                     permissions,
                 )
                 .map_err(|error| error.to_string())?;
+            if panel == Panel::Jarvis {
+                let mut nodes: Vec<_> = next.layout.root.iter_mut().collect();
+                while let Some(node) = nodes.pop() {
+                    if let Node::Split { size, first, second, .. } = node {
+                        if matches!(second.as_ref(), Node::Tabs { panels, .. } if panels == &[Panel::Jarvis]) {
+                            *size = SplitSize::FixedSecond(390.0);
+                            break;
+                        }
+                        nodes.push(first.as_mut());
+                        nodes.push(second.as_mut());
+                    }
+                }
+            }
         }
         next.validate()?;
         *self = next;
