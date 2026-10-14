@@ -93,11 +93,13 @@ fn serve_jarvis(stream: TcpStream, tx: &Sender<ControlRequest>, ctx: &egui::Cont
     use std::sync::atomic::Ordering;
     let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
     let _ = stream.set_write_timeout(Some(Duration::from_secs(2)));
+    let _ = stream.set_nodelay(true);
     let Ok(read) = stream.try_clone() else {
         return;
     };
     let mut line = String::new();
-    if BufReader::new(read).take(32769).read_line(&mut line).is_err() || line.len() > 32768 || !line.ends_with('\n') {
+    let mut reader = BufReader::new(read).take(32769);
+    if reader.read_line(&mut line).is_err() || line.len() > 32768 || !line.ends_with('\n') {
         return;
     }
     let Ok(msg) = serde_json::from_str::<Value>(&line) else {
@@ -135,8 +137,11 @@ fn serve_jarvis(stream: TcpStream, tx: &Sender<ControlRequest>, ctx: &egui::Cont
     if let Some(fields) = reply.as_object_mut() {
         fields.insert("id".into(), id);
     }
-    let mut out = stream;
-    let _ = writeln!(out, "{reply}");
+    // Keep the duplicate read handle alive and buffer JSON's many formatting writes.
+    let mut out = std::io::BufWriter::new(stream);
+    if let Err(error) = writeln!(out, "{reply}").and_then(|()| out.flush()) {
+        log::warn!("JARVIS response write failed: {error}");
+    }
 }
 
 #[cfg(test)]
@@ -144,6 +149,34 @@ mod jarvis_endpoint_tests {
     use super::*;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicBool, Ordering};
+
+    #[test]
+    fn private_endpoint_delivers_repeated_large_utf8_inspections_as_complete_frames() {
+        let (tx, rx) = channel();
+        let stop = Arc::new(AtomicBool::new(false));
+        let port = start_jarvis(egui::Context::default(), tx, stop.clone()).unwrap();
+        let tracks: Vec<_> = (0..1500).map(|id| json!({"id":id,"name":"เสียงร้อง","volume_db":-3.05,"mute":false})).collect();
+        let expected = json!({"ok":true,"id":1,"result":{"tracks":tracks}});
+        let response = expected.clone();
+        let owner = std::thread::spawn(move || {
+            for _ in 0..12 {
+                let request = rx.recv_timeout(Duration::from_secs(5)).unwrap();
+                assert_eq!(request.method, "session.inspect");
+                request.reply.send(response.clone()).unwrap();
+            }
+        });
+        for _ in 0..12 {
+            let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+            stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+            writeln!(stream, "{}", json!({"id":1,"method":"session.inspect","params":{"detail":"full"}})).unwrap();
+            let mut frame = String::new();
+            BufReader::new(stream).read_line(&mut frame).unwrap();
+            assert!(frame.ends_with('\n'));
+            assert_eq!(serde_json::from_str::<Value>(&frame).unwrap(), expected);
+        }
+        stop.store(true, Ordering::Release);
+        owner.join().unwrap();
+    }
 
     #[test]
     fn private_endpoint_rejects_unbounded_commands_and_closes_on_stop() {
