@@ -15,6 +15,7 @@ mod config;
 mod control_server;
 #[cfg(any(target_os = "windows", test))]
 mod graphics;
+mod jarvis_host;
 mod logging;
 #[cfg(target_os = "macos")]
 mod native_menu;
@@ -55,7 +56,11 @@ impl eframe::App for App {
         for p in dropped {
             open_path(&mut self.0, &p);
         }
-        if self.0.quit_requested {
+        if self.0.jarvis.applying() && (self.0.quit_requested || ctx.input(|i| i.viewport().close_requested())) {
+            self.0.quit_requested = false;
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.0.ui.status = "JARVIS กำลัง Apply/Verify — รอผลก่อนปิดโปรแกรม".into();
+        } else if self.0.quit_requested {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
         } else if ctx.input(|i| i.viewport().close_requested()) && dialogs::ask_to_save(&mut self.0, "app.quit", &serde_json::json!({})) {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
@@ -95,6 +100,7 @@ impl eframe::App for App {
         // The system Quit (⌘Q) ends the process from inside the event loop, so `run_native` never
         // returns: release the player's plugin instances and shut plugin hosting down here.
         self.0.player = None;
+        jarvis_host::shutdown_all();
         soundcraft_engine::shutdown_plugin_hosts();
     }
 }
@@ -155,7 +161,7 @@ fn save_prefs(ui: &UiState) {
 
 fn services() -> Services {
     Services {
-        jarvis_start: None,
+        jarvis_start: Some(Box::new(jarvis_host::start)),
         pick_open: Some(Box::new(|purpose: &str, _exts: &[&str]| {
             let d = rfd::FileDialog::new();
             let d = match purpose {

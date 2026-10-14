@@ -44,3 +44,28 @@ to avoid losing the Verify outcome. Host lifecycle integration is Step 7.2.3.
 Python regression suite: 133/133 passed at this step, including 11 Bridge tests
 and a real process ready/status/shutdown smoke. No Rust/UI integration claimed by
 this protocol milestone.
+
+## Step 7.2.3 native ownership
+
+`apps/soundcraft/src/jarvis_host.rs` starts the interpreter in a background
+worker. The UI uses a bounded request channel, polls responses, and repaints
+without blocking on model/process/socket work. Runtime paths are configurable;
+Windows resolves `py -3` to the actual interpreter before owning its process.
+The parent kills/waits only for its own child on worker exit. Normal desktop
+exit signals all owned workers and allows a bounded cleanup interval after
+stopping its player.
+
+`control_server::start_jarvis` binds `127.0.0.1:0` with a shared stop flag. It
+allows inspection and the five command IDs compiled by the original Intent
+Engine. `control::drain_jarvis` runs on the UI thread: planning allows inspection
+only, applying allows the exact next reviewed command only, and both require
+the same `Arc<Session>` identity. Every own write advances that identity and
+consumes one command. An unrelated mutation/replacement or stopped worker
+rejects queued writes, even if a baseline check had already passed. The general
+opt-in `--control` endpoint is separate and unchanged.
+
+Closing during planning stops the owned worker. Closing during Apply keeps it
+until the result arrives, and desktop close is deferred during that operation.
+Runtime/model/timeout/protocol errors discard plans and never trigger retries
+of writes. Complete confirmed plans still use the original Python per-step
+inspection and Verify implementation.
