@@ -2,7 +2,7 @@
 
 **Stage: pre-alpha** · next: alpha, ~5% and ~110–180 h away (the alpha gate's three failing workflows)
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-10 · **Change:** minor (readiness by audience with hours to ~95 %) · **Target:** Avid Pro Tools Ultimate 2026.4.1
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-14 · **Change:** minor (TKN V2 JARVIS integration note; upstream readiness estimates unchanged) · **Target:** Avid Pro Tools Ultimate 2026.4.1
 
 SoundCraft is a clean-room, pure-Rust digital audio workstation that aims at full parity with
 Avid Pro Tools, and then beyond it: faster, open, scriptable and agent-controllable. This page is
@@ -10,6 +10,16 @@ the one-page summary; the detail is in [`docs/target-app-parity.md`](docs/target
 (assessment), [`docs/gaps.md`](docs/gaps.md) (ranked work list), [`docs/roadmap.md`](docs/roadmap.md)
 (milestones and beta plan) and [`docs/parity-checklist.md`](docs/parity-checklist.md) (generated
 menu checklist).
+
+## TKN DAW V2 integration
+
+Step 7.2 adds an optional **Window > JARVIS** text panel to the existing Edit/Mix
+docking system. Local Python and Ollama remain development prerequisites;
+commands pass Preview → Confirmation → Apply → Verify. Voice development is
+paused and preserved. See [panel setup](tkn-jarvis/README_PANEL.md) and
+[acceptance report](tkn-jarvis/STEP72_PANEL_REPORT.md). Physical audio output and
+interface acceptance are separate from command integration. AI Mastering and
+Stem Separation remain subsequent work.
 
 ## Headline numbers
 
@@ -143,6 +153,7 @@ mutated and truncated movies. Field reports from the first public week are track
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-14 | minor | TKN V2 optional JARVIS text panel and local bridge; upstream parity/readiness estimates were not reassessed |
 | 2026-10-10 | minor | Readiness-by-audience table with hours: full 950–1,450 h, mainstream 380–600 h, essentials 110–200 h |
 | 2026-10-10 | minor | Added mainstream practitioner ~36 % and essentials user ~57 % to the headline numbers |
 | 2026-10-10 | minor | Stage alpha → pre-alpha: the core-workflow gate fails on interface recording, MIDI recording and session interchange; alpha distance added |

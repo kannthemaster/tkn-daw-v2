@@ -1,10 +1,21 @@
 # SoundCraft roadmap: milestones and what's next
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-10 · **Change:** minor (alpha gate added; stage re-normalized to pre-alpha) · **Target:** Avid Pro Tools Ultimate 2026.4.1
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-14 · **Change:** minor (TKN V2 integration note; upstream alpha gate unchanged) · **Target:** Avid Pro Tools Ultimate 2026.4.1
 
 Forward-looking plan. Status and numbers: [`../ROADMAP.md`](../ROADMAP.md) and
 [`target-app-parity.md`](target-app-parity.md); the ranked work list: [`gaps.md`](gaps.md).
 Hours are Opus 5.5 agent-hours.
+
+## TKN DAW V2 integration branch
+
+Step 7.2 implements the optional docked/floating JARVIS text panel, its owned
+temporary localhost bridge and background Python worker, explicit confirmation,
+document-bound writes and per-step Verify. Development runtime setup and
+acceptance scope are in [README_PANEL.md](../tkn-jarvis/README_PANEL.md) and
+[STEP72_PANEL_REPORT.md](../tkn-jarvis/STEP72_PANEL_REPORT.md). Voice Control is
+preserved and paused. AI Mastering and Stem Separation follow this work; MV
+Studio integration remains pending. This does not close the hardware alpha gate
+or authorize a merge into `main`.
 
 ## Current focus
 
@@ -86,5 +97,6 @@ There is no `cargo xtask scorecard` in this repo; the measured number is `cargo 
 
 | Date | Change | Summary |
 |---|---|---|
+| 2026-10-14 | minor | Scoped TKN V2 JARVIS panel/bridge milestone; hardware and upstream alpha readiness remain separate |
 | 2026-10-10 | minor | Added the alpha gate (3 of 6 core workflows fail → pre-alpha) |
 | 2026-10-10 | major | Created from ROADMAP.md's milestones and alpha list; added M12–M17 and the beta plan with estimates |
