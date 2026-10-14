@@ -57,20 +57,34 @@ def denied_request(text):
     return None
 
 
-def mentioned(text, tracks):
-    found = []
-    for track in tracks:
+def name_matches(text, tracks):
+    candidates = []
+    for index, track in enumerate(tracks):
         name = track["name"]
-        if re.search(r"(?<![A-Za-z0-9_])" + re.escape(name) + r"(?![A-Za-z0-9_])", text, re.I):
-            found.append(track)
-    return found
+        pattern = r"(?<![A-Za-z0-9_])" + re.escape(name) + r"(?![A-Za-z0-9_])"
+        candidates.extend((match.start(), match.end(), index) for match in re.finditer(pattern, text, re.I))
+    selected = []
+    for start, end, index in sorted(candidates, key=lambda match: (-(match[1] - match[0]), match[0], match[2])):
+        # Suppress only a shorter name contained in an exact longer occurrence.
+        # Separate mentions, duplicate names and partial overlaps stay ambiguous.
+        if not any(left <= start and end <= right and right - left > end - start
+                   for left, right, _ in selected):
+            selected.append((start, end, index))
+    return selected
+
+
+def mentioned(text, tracks):
+    matches = name_matches(text, tracks)
+    return [track for index, track in enumerate(tracks) if any(match[2] == index for match in matches)]
 
 
 def target_for(text, tracks, previous):
-    found = mentioned(text, tracks)
-    residual = text
-    for item in found:
-        residual = re.sub(re.escape(item["name"]), "", residual, flags=re.I)
+    matches = name_matches(text, tracks)
+    found = [track for index, track in enumerate(tracks) if any(match[2] == index for match in matches)]
+    residual = list(text)
+    for start, end, _ in matches:
+        residual[start:end] = " " * (end - start)
+    residual = "".join(residual)
     residual = re.sub(r"ช่อง\s*[a-j]\b", "", residual, flags=re.I)
     candidates = re.findall(r"[A-Za-z][A-Za-z0-9_]*", residual)
     jargon = {"eq", "compressor", "db", "hz", "ms", "jarvis", "q", "frequency",
