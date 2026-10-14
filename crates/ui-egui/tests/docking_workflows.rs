@@ -21,6 +21,35 @@ fn harness(state: Option<UiState>, width: f32, scale: f32) -> Harness<'static, S
     h
 }
 
+#[test]
+fn jarvis_preserves_canvas_and_reloads_floating_layout_in_edit_and_mix() {
+    let mut old = serde_json::to_value(UiState::default()).unwrap();
+    old.as_object_mut().unwrap().remove("show_jarvis");
+    let old: UiState = serde_json::from_value(old).unwrap();
+    assert!(!old.show_jarvis);
+    for window in [MainWindow::Edit, MainWindow::Mix] {
+        let mut h = harness(Some(old.clone()), 1400.0, 1.0);
+        h.state_mut().ui.window = window;
+        h.run_steps(3);
+        let before = serde_json::to_value(h.state().engine.session()).unwrap();
+        h.state_mut().run("window.jarvis", json!({})).unwrap();
+        h.run_steps(4);
+        let workspace = if window == MainWindow::Edit { &h.state().ui.docking } else { &h.state().ui.mix_docking };
+        assert!(workspace.layout.contains(&Panel::Canvas));
+        assert!(workspace.layout.contains(&Panel::Jarvis));
+        h.state_mut().run("ui.dock", json!({"operation":"float","panel":"jarvis","rect":[850,90,440,600]})).unwrap();
+        h.run_steps(4);
+        let saved = serde_json::to_string(&h.state().ui).unwrap();
+        let mut restored = harness(Some(serde_json::from_str(&saved).unwrap()), 1400.0, 1.0);
+        let workspace = if window == MainWindow::Edit { &restored.state().ui.docking } else { &restored.state().ui.mix_docking };
+        assert!(workspace.layout.floating.iter().any(|group| group.panels.contains(&Panel::Jarvis)));
+        restored.state_mut().run("ui.dock", json!({"operation":"close","panel":"jarvis"})).unwrap();
+        restored.run_steps(3);
+        assert!(!restored.state().ui.show_jarvis);
+        assert_eq!(serde_json::to_value(h.state().engine.session()).unwrap(), before);
+    }
+}
+
 fn drag(h: &mut Harness<'_, SoundApp>, from: egui::Pos2, to: egui::Pos2) {
     h.event(Event::PointerMoved(from));
     h.run_steps(2);

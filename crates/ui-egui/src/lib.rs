@@ -12,6 +12,7 @@ pub mod edit_window;
 pub mod extra_windows;
 pub mod fonts;
 pub mod icons;
+pub mod jarvis;
 pub mod menus;
 pub mod midi_editor;
 pub mod mix_window;
@@ -58,6 +59,7 @@ pub struct UiState {
     pub show_memory_locations: bool,
     pub show_big_counter: bool,
     pub show_undo_history: bool,
+    pub show_jarvis: bool,
     pub show_session_info: bool,
     pub show_audio_health: bool,
     pub show_about: bool,
@@ -120,6 +122,7 @@ impl Default for UiState {
             show_memory_locations: false,
             show_big_counter: false,
             show_undo_history: false,
+            show_jarvis: false,
             show_session_info: false,
             show_audio_health: false,
             show_about: false,
@@ -171,6 +174,7 @@ pub struct Services {
     pub pick_open: Option<Box<dyn Fn(&str, &[&str]) -> Option<String>>>,
     pub pick_save: Option<Box<dyn Fn(&str, &str) -> Option<String>>>,
     pub pick_folder: Option<Box<dyn Fn(&str) -> Option<String>>>,
+    pub jarvis_start: Option<Box<jarvis::Start>>,
 }
 
 /// File-system-safe folder name for a plugin id (`clap:com.x.y` → `clap_com.x.y`).
@@ -228,6 +232,7 @@ pub struct SoundApp {
     pub ui: UiState,
     pub audio_health_report: Option<Result<Value, String>>,
     pub services: Services,
+    pub jarvis: jarvis::State,
     /// Set only by a desktop host after installing an OS menu bar.
     pub native_menu_bar: bool,
     /// Folder for crash-recovery autosaves (native apps set it).
@@ -294,6 +299,7 @@ impl SoundApp {
             ui: UiState::default(),
             audio_health_report: None,
             services,
+            jarvis: jarvis::State::default(),
             native_menu_bar: false,
             autosave_dir: None,
             preset_dir: None,
@@ -807,6 +813,7 @@ impl SoundApp {
         let dt = self.last_frame.replace(now).map_or(1.0 / 60.0, |t| (now - t) as f32).clamp(0.0, 0.25);
         self.frame_ms = self.frame_ms * 0.9 + dt * 1000.0 * 0.1;
         control::drain(self, ctx);
+        control::drain_jarvis(self, ctx);
         self.apply_editor_edits();
         if !ctx.input(|i| i.pointer.any_down()) {
             if matches!(self.gesture, Some(Gesture::Fader { .. })) {
@@ -838,6 +845,7 @@ impl SoundApp {
         let editors = self.player.as_ref().is_some_and(Player::any_editor_open);
         ctx.request_repaint_after_secs(if editors { 0.03 } else { 1.0 } + ctx.input(|i| i.predicted_dt));
         control::collect_screenshots(self, ctx);
+        self.jarvis.tick(ctx, self.engine.session_arc(), self.ui.show_jarvis, self.services.jarvis_start.as_deref());
     }
 
     /// Feed queued synthetic input (from the control channel) into egui: one pointer event per
@@ -902,6 +910,7 @@ impl SoundApp {
         score_editor::show(self, &ctx);
         palette::show(self, &ctx);
         dialogs::show(self, &ctx);
+        jarvis::confirmation(self, &ctx);
         // Here, not in logic(): a covered or minimized window runs only logic(), with no vsync to pace it.
         if self.meters_live() {
             let hz = if self.ui.window == MainWindow::Mix { 60 } else { 30 };
@@ -924,6 +933,7 @@ impl SoundApp {
             "dialog": self.dialogs.open_name(),
             "frame_ms": self.frame_ms,
             "audio_device": self.player.as_ref().map(|p| p.device_name.clone()),
+            "jarvis": self.jarvis.inspect(),
             "status": self.ui.status,
         })
     }

@@ -16,6 +16,7 @@ pub const UI_COMMANDS: &[(&str, &str, &str, Option<&str>)] = &[
     ("window.big_counter", "Big Counter", "Window > Big Counter", Some("Cmd+3")),
     ("window.memory_locations", "Memory Locations", "Window > Memory Locations", Some("Cmd+5")),
     ("window.undo_history", "Undo History", "Window > Undo History", None),
+    ("window.jarvis", "JARVIS", "Window > JARVIS", None),
     ("window.clip_list", "Clip List", "Window > Clip List", None),
     ("window.track_list", "Track List", "View > Other Displays > Track List", None),
     ("window.clip_list_view", "Clip List", "View > Other Displays > Clip List", None),
@@ -315,6 +316,7 @@ fn checked_state(app: &SoundApp, path: &str, id: Option<&str>) -> bool {
         Some("view.main_counter") => path.rsplit(" > ").next().map(ruler_id).is_some_and(|r| e.main_counter.id() == r),
         Some("window.mix") => app.ui.window == MainWindow::Mix,
         Some("window.edit") => app.ui.window == MainWindow::Edit,
+        Some("window.jarvis") => app.ui.show_jarvis,
         Some("window.track_list") => app.ui.show_tracks_list,
         Some("window.clip_list_view") | Some("window.clip_list") => app.ui.show_clip_list,
         Some("window.narrow_mix") => app.ui.narrow_mix,
@@ -481,6 +483,7 @@ pub fn run_ui_command(app: &mut SoundApp, id: &str, p: &Value) -> Option<Result<
         "window.big_counter" => toggle(&mut app.ui.show_big_counter),
         "window.memory_locations" => toggle(&mut app.ui.show_memory_locations),
         "window.undo_history" => toggle(&mut app.ui.show_undo_history),
+        "window.jarvis" => toggle(&mut app.ui.show_jarvis),
         "window.clip_list" | "window.clip_list_view" => toggle(&mut app.ui.show_clip_list),
         "window.track_list" => toggle(&mut app.ui.show_tracks_list),
         "window.narrow_mix" => toggle(&mut app.ui.narrow_mix),
@@ -551,6 +554,7 @@ pub fn run_ui_command(app: &mut SoundApp, id: &str, p: &Value) -> Option<Result<
         "window.video" => toggle(&mut app.ui.show_video),
         "window.video_universe" => toggle(&mut app.ui.show_video_universe),
         "window.close" | "window.hide_floating" => {
+            app.ui.show_jarvis = false;
             app.ui.show_transport = false;
             app.ui.show_big_counter = false;
             app.ui.show_memory_locations = false;

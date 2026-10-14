@@ -93,6 +93,21 @@ pub fn definitions() -> FontDefinitions {
         bold_family.insert(0, "system-regular".into());
     }
     fonts.families.insert(FontFamily::Name("bold".into()), bold_family);
+    // Runtime fallback only; system fonts are never bundled or redistributed.
+    #[cfg(not(target_arch = "wasm32"))]
+    if std::env::var_os("SOUNDCRAFT_NO_SYSTEM_FONTS").is_none() {
+        for path in
+            ["C:\\Windows\\Fonts\\tahoma.ttf", "/System/Library/Fonts/Thonburi.ttc", "/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf"]
+        {
+            if let Ok(bytes) = std::fs::read(path) {
+                fonts.font_data.insert("system-thai".into(), Arc::new(FontData::from_owned(bytes)));
+                for family in fonts.families.values_mut() {
+                    family.push("system-thai".into());
+                }
+                break;
+            }
+        }
+    }
     fonts
 }
 

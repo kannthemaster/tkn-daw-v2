@@ -64,6 +64,23 @@ pub fn drain(app: &mut SoundApp, ctx: &egui::Context) {
     }
 }
 
+/// Dispatch only the reviewed plan against the document it was created for.
+pub fn drain_jarvis(app: &mut SoundApp, ctx: &egui::Context) {
+    for req in app.jarvis.controls() {
+        let reply = if app.jarvis.authorize(&req, &app.engine.session_arc()) {
+            let result = handle(app, ctx, &req).unwrap_or_else(|| err("Unsupported JARVIS request"));
+            if req.method == "engine.execute" {
+                app.jarvis.wrote(app.engine.session_arc());
+            }
+            result
+        } else {
+            err("JARVIS session changed or command not confirmed")
+        };
+        let _ = req.reply.send(reply);
+        ctx.request_repaint();
+    }
+}
+
 fn key_from(name: &str) -> Option<egui::Key> {
     egui::Key::from_name(name).or(match name.to_ascii_lowercase().as_str() {
         "space" => Some(egui::Key::Space),

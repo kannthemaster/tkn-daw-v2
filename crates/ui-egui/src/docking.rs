@@ -15,10 +15,11 @@ pub enum Panel {
     Midi,
     Memory,
     History,
+    Jarvis,
 }
 
 impl Panel {
-    pub const ALL: &[Self] = &[Self::Canvas, Self::Tracks, Self::Clips, Self::Midi, Self::Memory, Self::History];
+    pub const ALL: &[Self] = &[Self::Canvas, Self::Tracks, Self::Clips, Self::Midi, Self::Memory, Self::History, Self::Jarvis];
     pub fn id(self) -> &'static str {
         match self {
             Self::Canvas => "canvas",
@@ -27,6 +28,7 @@ impl Panel {
             Self::Midi => "midi",
             Self::Memory => "memory",
             Self::History => "history",
+            Self::Jarvis => "jarvis",
         }
     }
     fn label(self) -> &'static str {
@@ -37,6 +39,7 @@ impl Panel {
             Self::Midi => "MIDI Editor",
             Self::Memory => "Memory Locations",
             Self::History => "Undo History",
+            Self::Jarvis => "JARVIS",
         }
     }
     fn default_side(self) -> Zone {
@@ -47,6 +50,7 @@ impl Panel {
             Self::Midi => Zone::Bottom,
             Self::Memory => Zone::Bottom,
             Self::History => Zone::Right,
+            Self::Jarvis => Zone::Right,
         }
     }
     fn parse(id: &str) -> Result<Self, String> {
@@ -291,6 +295,7 @@ fn sync(workspace: &mut Workspace, app: &crate::SoundApp, edit: bool) -> Result<
     workspace.set_visible(Panel::Tracks, app.ui.show_tracks_list)?;
     workspace.set_visible(Panel::Memory, app.ui.show_memory_locations)?;
     workspace.set_visible(Panel::History, app.ui.show_undo_history)?;
+    workspace.set_visible(Panel::Jarvis, app.ui.show_jarvis)?;
     if edit {
         workspace.set_visible(Panel::Clips, app.ui.show_clip_list)?;
         workspace.set_visible(Panel::Midi, app.ui.show_midi_editor)?;
@@ -302,6 +307,7 @@ fn publish_visibility(app: &mut crate::SoundApp, workspace: &Workspace, edit: bo
     app.ui.show_tracks_list = workspace.layout.contains(&Panel::Tracks);
     app.ui.show_memory_locations = workspace.layout.contains(&Panel::Memory);
     app.ui.show_undo_history = workspace.layout.contains(&Panel::History);
+    app.ui.show_jarvis = workspace.layout.contains(&Panel::Jarvis);
     if edit {
         app.ui.show_clip_list = workspace.layout.contains(&Panel::Clips);
         app.ui.show_midi_editor = workspace.layout.contains(&Panel::Midi);
@@ -431,6 +437,7 @@ pub fn show(app: &mut crate::SoundApp, ui: &mut egui::Ui, window: crate::MainWin
             }
             Panel::Memory => crate::panels::memory_locations(app, ui),
             Panel::History => crate::panels::undo_history(app, ui),
+            Panel::Jarvis => minimum_body(ui, egui::vec2(300.0, 400.0), |ui| crate::jarvis::panel(app, ui)),
         },
     );
     let _ = sync(&mut workspace, app, edit);
@@ -470,6 +477,7 @@ fn panel_limits(panel: &Panel) -> PanelLimits {
         Panel::Midi => (egui::vec2(420.0, 260.0), 1_000_000.0),
         Panel::Memory => (egui::vec2(260.0, 160.0), 1_000_000.0),
         Panel::History => (egui::vec2(200.0, 160.0), 720.0),
+        Panel::Jarvis => (egui::vec2(300.0, 300.0), 900.0),
     };
     PanelLimits { min, max: egui::vec2(max_width, 1_000_000.0) }
 }

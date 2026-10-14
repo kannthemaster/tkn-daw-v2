@@ -155,6 +155,7 @@ fn save_prefs(ui: &UiState) {
 
 fn services() -> Services {
     Services {
+        jarvis_start: None,
         pick_open: Some(Box::new(|purpose: &str, _exts: &[&str]| {
             let d = rfd::FileDialog::new();
             let d = match purpose {
