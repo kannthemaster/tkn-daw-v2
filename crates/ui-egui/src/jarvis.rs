@@ -58,6 +58,11 @@ impl State {
     pub fn busy(&self) -> bool {
         self.phase != Phase::Idle
     }
+    /// Panel navigation must not become an Edit/transport shortcut when its
+    /// widgets lose focus, including while a closed panel awaits Verify.
+    pub(crate) fn blocks_session_shortcuts(&self) -> bool {
+        self.busy() || self.confirmation_open
+    }
     fn say(&mut self, who: &str, text: &str) {
         if self.history.len() >= 50 {
             self.history.remove(0);

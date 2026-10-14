@@ -67,6 +67,14 @@ worker until Apply/Verify reports a result; app close is also deferred while tha
 operation is active. Normal app exit signals and waits briefly for its owned
 workers to stop. Retry after a runtime or model error creates a fresh preview.
 
+While JARVIS is starting/planning/applying or its confirmation dialog is open,
+background DAW keyboard shortcuts are suspended. This includes a hidden panel
+waiting for Verify: Tab must not move the Edit insertion when panel focus is
+lost. Normal shortcuts resume when that operation/dialog ends. Window/menu
+controls remain available; an unrelated document edit still rejects the plan.
+See [lifecycle follow-up](STEP72_LIFECYCLE_FOLLOWUP.md) for the reproduced cause,
+Windows results and [repeatable acceptance](PANEL_LIFECYCLE_ACCEPTANCE.md).
+
 ## Disposable Demo acceptance
 
 Build this checkout, then launch it with a separate profile:

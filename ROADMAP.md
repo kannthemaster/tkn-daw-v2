@@ -2,7 +2,7 @@
 
 **Stage: pre-alpha** · next: alpha, ~5% and ~110–180 h away (the alpha gate's three failing workflows)
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-14 · **Change:** minor (TKN V2 JARVIS integration note; upstream readiness estimates unchanged) · **Target:** Avid Pro Tools Ultimate 2026.4.1
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-14 · **Change:** minor (JARVIS lifecycle follow-up; upstream readiness estimates unchanged) · **Target:** Avid Pro Tools Ultimate 2026.4.1
 
 SoundCraft is a clean-room, pure-Rust digital audio workstation that aims at full parity with
 Avid Pro Tools, and then beyond it: faster, open, scriptable and agent-controllable. This page is
@@ -20,6 +20,10 @@ paused and preserved. See [panel setup](tkn-jarvis/README_PANEL.md) and
 [acceptance report](tkn-jarvis/STEP72_PANEL_REPORT.md). Physical audio output and
 interface acceptance are separate from command integration. AI Mastering and
 Stem Separation remain subsequent work.
+
+The JARVIS [lifecycle follow-up](tkn-jarvis/STEP72_LIFECYCLE_FOLLOWUP.md)
+addresses keyboard input reaching Edit during confirmation/hidden Apply;
+document-bound confirmation and per-step Verify remain strict.
 
 ## Headline numbers
 

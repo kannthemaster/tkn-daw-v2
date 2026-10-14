@@ -1,6 +1,6 @@
 # SoundCraft roadmap: milestones and what's next
 
-> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-14 · **Change:** minor (TKN V2 integration note; upstream alpha gate unchanged) · **Target:** Avid Pro Tools Ultimate 2026.4.1
+> **Last reviewed:** 2026-10-10 · **Last updated:** 2026-10-14 · **Change:** minor (JARVIS lifecycle follow-up; upstream alpha gate unchanged) · **Target:** Avid Pro Tools Ultimate 2026.4.1
 
 Forward-looking plan. Status and numbers: [`../ROADMAP.md`](../ROADMAP.md) and
 [`target-app-parity.md`](target-app-parity.md); the ranked work list: [`gaps.md`](gaps.md).
@@ -16,6 +16,11 @@ acceptance scope are in [README_PANEL.md](../tkn-jarvis/README_PANEL.md) and
 preserved and paused. AI Mastering and Stem Separation follow this work; MV
 Studio integration remains pending. This does not close the hardware alpha gate
 or authorize a merge into `main`.
+
+JARVIS close-during-Apply keyboard ownership is covered by the
+[lifecycle follow-up](../tkn-jarvis/STEP72_LIFECYCLE_FOLLOWUP.md), with unchanged
+document guards and disposable Windows acceptance. This does not change the
+upstream alpha gate or resume Voice Control.
 
 ## Current focus
 

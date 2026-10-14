@@ -894,7 +894,9 @@ impl SoundApp {
             self.arrange_request = false;
             ctx.memory_mut(|m| m.reset_areas());
         }
-        shortcuts::handle(self, &ctx);
+        if !self.jarvis.blocks_session_shortcuts() {
+            shortcuts::handle(self, &ctx);
+        }
         if !self.native_menu_bar {
             menus::menu_bar(self, ui);
         }

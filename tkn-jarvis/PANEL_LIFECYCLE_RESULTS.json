@@ -1,0 +1,71 @@
+{
+  "date": "2026-10-14",
+  "base_commit": "2b6998f25b772279afcf91d2a9bad7a441086bb9",
+  "rollback_ancestor": "9ef52bf04cab068b34cd84aa68e1c9b102adbec3",
+  "platform": "Windows native, separate no-audio demos",
+  "python": "3.10.11",
+  "rust": "1.99.0",
+  "model": "gemma3:4b",
+  "model_digest": "a2af6cc3eb7fa8be8504abaf9b04e88f17a119ec3f04a3addf55f92841195f5a",
+  "root_cause": {
+    "key": "Tab",
+    "initial_edit_position": 443072,
+    "next_selected_clip_boundary": 443077,
+    "original_status": "หยุด: Stopped at step 1; 0 prior steps verified. Current step may have written; no automatic rollback: JARVIS session changed or command not confirmed — บางขั้นอาจเปลี่ยนแล้ว ไม่มี rollback อัตโนมัติ"
+  },
+  "positive_volume": {
+    "status": "Verify ผ่าน 1 ขั้นตอน",
+    "position": 443072,
+    "sidecar": false,
+    "closed_while_applying": true,
+    "quit_deferred": true,
+    "restored_tracks": true
+  },
+  "positive_rename_mute": {
+    "status": "Verify ผ่าน 2 ขั้นตอน",
+    "position": 443072,
+    "sidecar": false,
+    "stable_track_id": 3,
+    "closed_while_applying": true,
+    "floating_layout_retained": true,
+    "restored_tracks": true
+  },
+  "negative_external_mutation": {
+    "position": 443077,
+    "status": "หยุด: Stopped at step 1; 0 prior steps verified. Current step may have written; no automatic rollback: JARVIS session changed or command not confirmed — บางขั้นอาจเปลี่ยนแล้ว ไม่มี rollback อัตโนมัติ",
+    "reported_success": false,
+    "restored_tracks": true
+  },
+  "owned_app_endpoints_closed": true,
+  "physical_audio_tested": false,
+  "voice_resumed": false,
+  "guards_changed": false,
+  "preserved_attempts": [
+    "rename: maneuver occurred after Verify; excluded from close-during-Apply acceptance",
+    "rename-final: initial poll asserted cleanup before following UI frame; original observations and follow-up retained",
+    "full-ci.log: assets gate rejected generated demo evidence; moved owned evidence outside checkout before rerun"
+  ],
+  "raw_evidence_root": "C:\\Users\\kannt\\AppData\\Local\\Packages\\OpenAI.Codex_2p2nqsd0c76g0\\LocalCache\\Local\\TKN-DAW-Dev\\panel-lifecycle-evidence-20261014",
+  "source_sha256": {
+    "crates/ui-egui/src/jarvis.rs": "8470fa3cdc85973576325510512f9ec0fd53287adbd70e65cf6b45560eca9df6",
+    "crates/ui-egui/src/lib.rs": "cce402c080ee9a38ae4e1d6c5333b097d5764019dcb7c7774a2ccd975e534d6f",
+    "tkn-jarvis/jarvis_bridge.py": "453f3dd5a0a5de45bcb0fb7ff4087f383b6fe7dfffd163b8ff315b91e60b4121",
+    "tkn-jarvis/intent_engine.py": "d64458772964ecc01a14675059ab49a716cb8bcc8b33953265afd7df23d1e5bf",
+    "tkn-jarvis/tests/fixtures/delayed_panel_bridge.py": "593695088873717147dff12bac59e6c834e90265e762713c22d238d0038c867b"
+  },
+  "validation": {
+    "python_tests": 133,
+    "jarvis_ui_workflow_tests": 11,
+    "full_ci_exit": 0,
+    "full_ci_gates": [
+      "fmt",
+      "clippy",
+      "test",
+      "assets",
+      "layers",
+      "wasm"
+    ],
+    "rust_test_threads": 1,
+    "existing_nonfatal_wasm_warning": "CaptureStates dead code"
+  }
+}
